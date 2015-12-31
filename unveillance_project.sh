@@ -67,7 +67,7 @@ case "$1" in
 
 		init_docker_image
 		cd $UNVEILLANCE_BUILD_HOME
-		python annex_project.py init
+		python unveillance_project.py init
 		if [ $? -eq 0 ]; then
 			#run_docker_routine
 			echo "would run docker routine"
