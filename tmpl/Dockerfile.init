@@ -1,0 +1,25 @@
+FROM ubuntu:14.04
+MAINTAINER harlo <harlo.holmes@gmail.com>
+
+# UPDATE
+RUN apt-get update
+RUN apt-get install -yq wget zip unzip openjdk-7-jre-headless openssl git python-dev make openssh-server gcc
+
+# ADD OUR PRIMARY USER
+RUN useradd -ms /bin/bash -p $(openssl passwd -1 ${USER_PWD}) ${USER}
+RUN adduser ${USER} sudo
+
+# ADD FILES GALORE
+ADD src /home/${USER}/
+RUN chmod +x /home/${USER}/*.sh
+RUN chmod +x /home/${USER}/${IMAGE_NAME}/*.sh
+
+# SET UP USER STUFF
+RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN chown -R ${USER}:${USER} /home/${USER}
+
+USER ${USER}
+ENV HOME /home/${USER}
+WORKDIR /home/${USER}
+
+CMD ["/bin/bash", "./install.sh"]

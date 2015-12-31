@@ -1,0 +1,10 @@
+.DS_Store
+*.pyc
+
+.ssh/
+venv/
+src/
+
+docker.config.json
+.routine.sh
+Dockerfile
