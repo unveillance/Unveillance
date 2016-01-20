@@ -1,7 +1,7 @@
 #! /bin/bash
 
 source ~/.bash_profile
-ANNEX_DIR=~/Unveillance/lib/Annex
+ANNEX_DIR=~/unveillance/lib/Annex
 
 show_usage(){
 	echo "_________________________"

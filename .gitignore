@@ -2,9 +2,10 @@
 *.pyc
 
 .ssh/
-venv/
+.venv/
 src/
 
 docker.config.json
+docker.allocations.txt
 .routine.sh
 Dockerfile

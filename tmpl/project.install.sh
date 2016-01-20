@@ -1,3 +1,3 @@
 #! /bin/bash
 
-cd ~/Unveillance && ./setup.sh
+cd ~/unveillance && ./setup.sh

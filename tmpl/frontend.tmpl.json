@@ -1,0 +1,9 @@
+{
+	"documentcloud_no_ask" : true,
+	"gdrive_auth_no_ask" : true,
+	"server_force_ssh" : true,
+	"server_use_ssl" : false,
+	"annex_remote" : "/home/unveillance/unveillance_remote",
+	"uv_uuid" : "unveillance",
+	"server_user" : "unveillance"
+}

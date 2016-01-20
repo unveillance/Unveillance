@@ -2,11 +2,5 @@
 	"USER" : "unveillance",
 	"IMAGE_NAME" : "unveillance",
 	"API_PORT" : 8889,
-	"MESSAGE_PORT" : 8890,
-	"ANNEX_CONFIG" : {
-		"annex_dir" : "/home/unveillance/unveillance_remote",
-		"uv_log_cron" : 3,
-		"uv_uuid" : "unveillance",
-		"ssh_root" : "/home/unveillance/.ssh"
-	}
+	"MESSAGE_PORT" : 8890
 }

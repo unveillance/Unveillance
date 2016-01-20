@@ -1,27 +1,14 @@
 #! /bin/bash
 
-UNVEILLANCE_BUILD_HOME=$(cd "$(dirname "{BASH_SOURCE[0]}")" && pwd)
-if [[ $2 ]]; then
-	IMAGE_HOME=$2
-	
-else
-	IMAGE_HOME=$UNVEILLANCE_BUILD_HOME
-fi
-
-SRC_HOME=$IMAGE_HOME/src
-
-run_docker_routine(){
-	cd $IMAGE_HOME
-	chmod +x .routine.sh
-	./.routine.sh
-	rm .routine.sh
-}
-
 init_docker_image(){
-	PROJECT_HOME=$SRC_HOME/Unveillance
+	IMAGE_HOME=$UNVEILLANCE_BUILD_HOME
+	SRC_HOME=$IMAGE_HOME/src
+	PROJECT_HOME=$SRC_HOME/unveillance
+
 	mkdir -p $PROJECT_HOME
 
 	cp -R $UNVEILLANCE_BUILD_HOME/.ssh/ $SRC_HOME
+	cp $UNVEILLANCE_BUILD_HOME/tmpl/annex.tmpl.json $SRC_HOME/unveillance.secrets.json
 	for tmpl in install.sh run.sh; do
 		cp $UNVEILLANCE_BUILD_HOME/tmpl/project.$tmpl $SRC_HOME/$tmpl
 	done
@@ -35,54 +22,167 @@ init_docker_image(){
 	for tmpl in setup.sh unveillance.sh vars.json; do
 		cp $UNVEILLANCE_BUILD_HOME/tmpl/project.$tmpl $PROJECT_HOME/$tmpl
 	done
+
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py init
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+init_annex_project(){
+	SRC_HOME=$IMAGE_HOME/annex
+	ANNEX_DIR=$IMAGE_HOME/data
+	FRONTEND_DIR=$IMAGE_HOME/gui
+
+	mkdir -p $SRC_HOME
+
+	mkdir $SRC_HOME/Tasks
+	mkdir $SRC_HOME/Models
+
+	cp $UNVEILLANCE_BUILD_HOME/docker.config.json $IMAGE_HOME
+	cp $UNVEILLANCE_BUILD_HOME/tmpl/project.vars.json $SRC_HOME/vars.json
+
+	# clone frontend
+	mkdir -p $FRONTEND_DIR
+	cd $FRONTEND_DIR
+	for d in css images js layout; do
+		mkdir -p $FRONTEND_DIR/web/$d
+	done
+
+	git init
+	git submodule add git@github.com:unveillance/UnveillanceInterface.git lib/Frontend
+	git submodule update --init --recursive
+
+	# setup frontend
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py build $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		cd $FRONTEND_DIR/lib/Frontend
+		python setup.py $IMAGE_HOME/unveillance.secrets.json
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+
+	# commit project
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py commit $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+start_annex_project(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py start $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+stop_annex_project(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py stop $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+remove_annex_project(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py remove $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+run_docker_routine(){
+	cd $IMAGE_HOME
+	if [ -f .routine.sh ]; then
+		chmod +x .routine.sh
+
+		./.routine.sh
+		rm .routine.sh
+
+		if [ -f Dockerfile ]; then
+			rm Dockerfile
+		fi
+	fi
 }
 
 show_usage(){
-	echo "unveillance [init|new|update]"
+	echo "unveillance [init|new|update|start|stop|restart]"
 }
 
 do_exit(){
-	deactivate venv
+	cd $UNVEILLANCE_BUILD_HOME
+	deactivate .venv
+	echo "_________________________"
+	echo ""
 	exit $1
 }
 
 setup(){
-	virtualenv venv
-	source venv/bin/activate
+	virtualenv .venv
+	source .venv/bin/activate
 	pip install -r dutils/requirements.txt
 }
 
-ls venv
-if [ $? -eq 1 ]; then
-	setup
+echo ""
+echo "_________________________"
+
+IMAGE_HOME=$(pwd)
+
+cd $UNVEILLANCE_BUILD_HOME
+if [ -d .venv/bin ]; then
+	source .venv/bin/activate
 else
-	source venv/bin/activate
+	setup
 fi
 
 case "$1" in
 	init)
-		echo "_________________________"
 		echo "Initing Unveillance..."
-		echo "_________________________"
-
 		init_docker_image
-		cd $UNVEILLANCE_BUILD_HOME
-		python unveillance_project.py init
-		if [ $? -eq 0 ]; then
-			#run_docker_routine
-			echo "would run docker routine"
-			cat .routine.sh
-		fi
 		;;
 	new)
-		echo "_________________________"
-		echo "New Unveillance Project..."
-		echo "_________________________"
+		echo "New Unveillance Project at $SRC_HOME..."
+		init_annex_project
+		;;
+	update)
+		echo "Updating Unveillance Project at $SRC_HOME..."
+		;;
+	start)
+		echo "Starting Unveillance Project at $IMAGE_HOME..."
+		start_annex_project
+		;;
+	stop)
+		echo "Stopping Unveillance Project at $IMAGE_HOME..."
+		stop_annex_project
+		;;
+	restart)
+		echo "Restarting Unveillance Project at $IMAGE_HOME..."
+		stop_annex_project
+		sleep 2
+		start_annex_project
+		;;
+	remove)
+		echo "Removing Unveillance Project at $IMAGE_HOME..."
+		remove_annex_project
 		;;
 	*)
-		echo "_________________________"
-		echo "Unveillance help"
-		echo "_________________________"
+		echo "Unveillance help"		
 
 		show_usage
 		do_exit 1

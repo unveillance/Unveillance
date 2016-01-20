@@ -1,0 +1,12 @@
+FROM unveillance:init
+MAINTAINER harlo <harlo.holmes@gmail.com>
+
+# ADD NEW SSH KEY
+ADD data/*.pub /home/${USER}/.ssh/authorized_keys
+
+# MODIFY SSHD CONFIG TO ALLOW ONLY PUBKEY
+
+# MODIFY SSHD CONFIG FOR ROAMING: NO
+
+CMD ["/bin/bash", "./run.sh"]
+EXPOSE ${DEFAULT_PORTS}

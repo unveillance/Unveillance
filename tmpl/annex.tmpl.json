@@ -1,0 +1,6 @@
+{
+	"annex_dir" : "/home/unveillance/unveillance_remote",
+	"uv_log_cron" : 3,
+	"uv_uuid" : "unveillance",
+	"ssh_root" : "/home/unveillance/.ssh"
+}
