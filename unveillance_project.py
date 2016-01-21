@@ -131,6 +131,16 @@ class AnnexProject():
 
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
 
+	def attach(self):
+		with open(os.path.join(self.config['IMAGE_HOME'], "gui", "lib", "Frontend", "conf", "unveillance.secrets.json"), 'rb') as u:
+			frontend_config = json.loads(u.read())
+
+		routine = [
+			"ssh -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s" % frontend_config
+		]
+
+		return build_routine(routine, dst=self.config['IMAGE_HOME'])
+
 	def start(self):
 		with open(os.path.join(self.config['IMAGE_HOME'], "gui", "lib", "Frontend", "conf", "unveillance.secrets.json"), 'rb') as u:
 			frontend_config = json.loads(u.read())
@@ -138,7 +148,9 @@ class AnnexProject():
 		routine = [
 			"%(DOCKER_EXE)s start %(PROJECT_NAME)s" % self.config,
 			"sleep 3",
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'" % frontend_config
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'" % frontend_config,
+			"cd %(IMAGE_HOME)s/gui/lib/Frontend" % self.config,
+			"./startup.sh %(IMAGE_HOME)s/gui/unveillance.py" % self.config
 		]
 		
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -150,7 +162,9 @@ class AnnexProject():
 		routine = [
 			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./shutdown.sh'" % frontend_config,
 			"sleep 3",
-			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s" % self.config
+			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s" % self.config,
+			"cd %(IMAGE_HOME)s/gui/lib/Frontend" % self.config,
+			"./shutdown.sh %(IMAGE_HOME)s/gui/unveillance.py"
 		]
 
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -177,6 +191,7 @@ if __name__ == "__main__":
 		"update" : annex_project.update,
 		"start" : annex_project.start,
 		"stop" : annex_project.stop,
+		"attach" : annex_project.attach,
 		"remove" : annex_project.remove
 	}
 

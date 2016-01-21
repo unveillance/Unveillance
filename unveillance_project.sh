@@ -59,6 +59,10 @@ init_annex_project(){
 		mkdir -p $FRONTEND_DIR/web/$d
 	done
 
+	touch __init__.py
+	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.controller.py unveillance.py
+	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.vars.py vars.py
+
 	git init
 	git submodule add git@github.com:unveillance/UnveillanceInterface.git lib/Frontend
 	git submodule update --init --recursive
@@ -92,6 +96,16 @@ update_annex_project(){
 
 	cd $UNVEILLANCE_BUILD_HOME
 	python unveillance_project.py update $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+attach_annex_project(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py attach $IMAGE_HOME
 	if [ $? -eq 0 ]; then
 		run_docker_routine
 	else
@@ -186,8 +200,12 @@ case "$1" in
 		init_annex_project
 		;;
 	update)
-		echo "Updating Unveillance Project at $SRC_HOME..."
+		echo "Updating Unveillance Project at $IMAGE_HOME..."
 		update_annex_project
+		;;
+	attach)
+		echo "Attaching to Unveillance Project at $IMAGE_HOME"
+		attach_annex_project
 		;;
 	start)
 		echo "Starting Unveillance Project at $IMAGE_HOME..."
