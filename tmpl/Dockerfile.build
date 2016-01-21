@@ -8,5 +8,8 @@ ADD data/*.pub /home/${USER}/.ssh/authorized_keys
 
 # MODIFY SSHD CONFIG FOR ROAMING: NO
 
+# SETUP GIT CONFIG FOR AWKWARD PUSHING
+RUN cd ~/unveillance && git config receive.denyCurrentBranch "ignore"
+
 CMD ["/bin/bash", "./run.sh"]
 EXPOSE ${DEFAULT_PORTS}

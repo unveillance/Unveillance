@@ -99,11 +99,28 @@ class AnnexProject():
 			frontend_config = json.loads(u.read())
 		
 		# add remaining frontend templates
+		# write git_as.sh and ssh_as.sh
+		ssh_cmd = ['exec ssh -i %(ssh_key_priv)s -o PubkeyAuthentication=yes -o IdentitiesOnly=yes "$@"' % frontend_config]
+		git_cmd = ['GIT_SSH=%s/ssh_as.sh exec git "$@"' % self.config['IMAGE_HOME']]
+
+		for c in [("git_as", git_cmd), ("ssh_as", ssh_cmd)]:
+			with open(os.path.join(self.config['IMAGE_HOME'], "%s.sh" % c[0]), 'wb+') as g:
+				g.write("#! /bin/bash")
+				g.write("\n")
+				g.write("\n".join(c[1]))
+
 		# say hello to annex
-		routine = ["ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'echo \"\"'"]
+		# git remote add docker image
+		routine = [
+			"chmod +x %(IMAGE_HOME)s/*.sh" % self.config,
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'echo \"\"'" % frontend_config,
+			"cd %(IMAGE_HOME)s/annex" % self.config,
+			"git config alias.unveillance \\!\"%(IMAGE_HOME)s/git_as.sh\"" % self.config,
+			"git remote add origin ssh://%(server_user)s@localhost:%(annex_remote_port)d/~/unveillance" % frontend_config
+		]
+
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
 		
-
 	def update(self):
 		return False
 

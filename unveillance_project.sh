@@ -37,13 +37,20 @@ init_annex_project(){
 	ANNEX_DIR=$IMAGE_HOME/data
 	FRONTEND_DIR=$IMAGE_HOME/gui
 
-	mkdir -p $SRC_HOME
+	cp $UNVEILLANCE_BUILD_HOME/docker.config.json $IMAGE_HOME
 
+	#setup annex
+	mkdir -p $SRC_HOME
 	mkdir $SRC_HOME/Tasks
 	mkdir $SRC_HOME/Models
 
-	cp $UNVEILLANCE_BUILD_HOME/docker.config.json $IMAGE_HOME
 	cp $UNVEILLANCE_BUILD_HOME/tmpl/project.vars.json $SRC_HOME/vars.json
+	
+	cd $SRC_HOME
+	git init
+	git config user.email "unveillance@unveillance.github.io"
+	git config user.name "unveillance"
+	cp $UNVEILLANCE_BUILD_HOME/tmpl/annex.gitignore .gitignore
 
 	# clone frontend
 	mkdir -p $FRONTEND_DIR
