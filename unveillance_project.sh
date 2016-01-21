@@ -84,6 +84,21 @@ init_annex_project(){
 	fi
 }
 
+update_annex_project(){
+	cd $IMAGE_HOME/annex
+	git add .
+	git commit -m "annex updated"
+	git unveillance push origin master
+
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py update $IMAGE_HOME
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
 start_annex_project(){
 	cd $UNVEILLANCE_BUILD_HOME
 	python unveillance_project.py start $IMAGE_HOME
@@ -169,6 +184,7 @@ case "$1" in
 		;;
 	update)
 		echo "Updating Unveillance Project at $SRC_HOME..."
+		update_annex_project
 		;;
 	start)
 		echo "Starting Unveillance Project at $IMAGE_HOME..."

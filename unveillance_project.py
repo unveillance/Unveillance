@@ -122,7 +122,14 @@ class AnnexProject():
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
 		
 	def update(self):
-		return False
+		with open(os.path.join(self.config['IMAGE_HOME'], "gui", "lib", "Frontend", "conf", "unveillance.secrets.json"), 'rb') as u:
+			frontend_config = json.loads(u.read())
+
+		routine = [
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'cd ~/unveillance && git reset --hard HEAD && cd lib/Annex && ./update.sh all'" % frontend_config
+		]
+
+		return build_routine(routine, dst=self.config['IMAGE_HOME'])
 
 	def start(self):
 		with open(os.path.join(self.config['IMAGE_HOME'], "gui", "lib", "Frontend", "conf", "unveillance.secrets.json"), 'rb') as u:
