@@ -99,12 +99,12 @@ class AnnexProject():
 			frontend_config = json.loads(u.read())
 		
 		# add remaining frontend templates
-		# write git_as.sh and ssh_as.sh
+		# write .git_as.sh and .ssh_as.sh
 		ssh_cmd = ['exec ssh -i %(ssh_key_priv)s -o PubkeyAuthentication=yes -o IdentitiesOnly=yes "$@"' % frontend_config]
-		git_cmd = ['GIT_SSH=%s/ssh_as.sh exec git "$@"' % self.config['IMAGE_HOME']]
+		git_cmd = ['GIT_SSH=%s/.ssh_as.sh exec git "$@"' % self.config['IMAGE_HOME']]
 
 		for c in [("git_as", git_cmd), ("ssh_as", ssh_cmd)]:
-			with open(os.path.join(self.config['IMAGE_HOME'], "%s.sh" % c[0]), 'wb+') as g:
+			with open(os.path.join(self.config['IMAGE_HOME'], ".%s.sh" % c[0]), 'wb+') as g:
 				g.write("#! /bin/bash")
 				g.write("\n")
 				g.write("\n".join(c[1]))
@@ -112,10 +112,10 @@ class AnnexProject():
 		# say hello to annex
 		# git remote add docker image
 		routine = [
-			"chmod +x %(IMAGE_HOME)s/*.sh" % self.config,
+			"chmod +x %(IMAGE_HOME)s/.git_as.sh %(IMAGE_HOME)s/.ssh_as.sh" % self.config,
 			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'echo \"\"'" % frontend_config,
 			"cd %(IMAGE_HOME)s/annex" % self.config,
-			"git config alias.unveillance \\!\"%(IMAGE_HOME)s/git_as.sh\"" % self.config,
+			"git config alias.unveillance \\!\"%(IMAGE_HOME)s/.git_as.sh\"" % self.config,
 			"git remote add origin ssh://%(server_user)s@localhost:%(annex_remote_port)d/~/unveillance" % frontend_config
 		]
 
@@ -138,8 +138,7 @@ class AnnexProject():
 		routine = [
 			"%(DOCKER_EXE)s start %(PROJECT_NAME)s" % self.config,
 			"sleep 3",
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes \
-				-i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'" % frontend_config
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'" % frontend_config
 		]
 		
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -149,8 +148,7 @@ class AnnexProject():
 			frontend_config = json.loads(u.read())
 
 		routine = [
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes \
-				-i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./shutdown.sh'" % frontend_config,
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./shutdown.sh'" % frontend_config,
 			"sleep 3",
 			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s" % self.config
 		]

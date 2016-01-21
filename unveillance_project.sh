@@ -135,7 +135,10 @@ run_docker_routine(){
 		chmod +x .routine.sh
 
 		./.routine.sh
-		rm .routine.sh
+
+		if [ -f .routine.sh ]; then
+			rm .routine.sh
+		fi
 
 		if [ -f Dockerfile ]; then
 			rm Dockerfile
