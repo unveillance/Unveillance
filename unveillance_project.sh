@@ -59,9 +59,10 @@ init_annex_project(){
 		mkdir -p $FRONTEND_DIR/web/$d
 	done
 
-	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.controller.py unveillance.py
-	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.vars.py vars.py
-
+	for p in controller_frontend vars conf; do
+		cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.$p.py $p.py
+	done
+	
 	git init
 	git submodule add git@github.com:unveillance/UnveillanceInterface.git lib/Frontend
 	git submodule update --init --recursive
@@ -122,6 +123,8 @@ start_annex_project(){
 	python unveillance_project.py start $IMAGE_HOME
 	if [ $? -eq 0 ]; then
 		run_docker_routine
+		cd $IMAGE_HOME/gui/lib/Frontend
+		./startup.sh $IMAGE_HOME/gui/controller_frontend.py
 	else
 		do_exit 1
 	fi
@@ -132,6 +135,8 @@ stop_annex_project(){
 	python unveillance_project.py stop $IMAGE_HOME
 	if [ $? -eq 0 ]; then
 		run_docker_routine
+		cd $IMAGE_HOME/gui/lib/Frontend
+		./shutdown.sh $IMAGE_HOME/gui/controller_frontend.py
 	else
 		do_exit 1
 	fi

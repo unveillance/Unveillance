@@ -148,9 +148,7 @@ class AnnexProject():
 		routine = [
 			"%(DOCKER_EXE)s start %(PROJECT_NAME)s" % self.config,
 			"sleep 3",
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'&" % frontend_config,
-			"cd %(IMAGE_HOME)s/gui/lib/Frontend" % self.config,
-			"./startup.sh %(IMAGE_HOME)s/gui/unveillance.py" % self.config
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'&" % frontend_config
 		]
 		
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -162,9 +160,7 @@ class AnnexProject():
 		routine = [
 			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./shutdown.sh'&" % frontend_config,
 			"sleep 3",
-			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s" % self.config,
-			"cd %(IMAGE_HOME)s/gui/lib/Frontend" % self.config,
-			"./shutdown.sh %(IMAGE_HOME)s/gui/unveillance.py" % self.config
+			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s" % self.config
 		]
 
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
