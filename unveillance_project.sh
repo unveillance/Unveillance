@@ -59,13 +59,17 @@ init_annex_project(){
 		mkdir -p $FRONTEND_DIR/web/$d
 	done
 
-	touch __init__.py
 	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.controller.py unveillance.py
 	cp $UNVEILLANCE_BUILD_HOME/tmpl/frontend.vars.py vars.py
 
 	git init
 	git submodule add git@github.com:unveillance/UnveillanceInterface.git lib/Frontend
 	git submodule update --init --recursive
+
+	touch __init__.py
+	touch lib/__init__.py
+
+	pip install -r lib/Frontend/requirements.txt
 
 	# setup frontend
 	cd $UNVEILLANCE_BUILD_HOME
