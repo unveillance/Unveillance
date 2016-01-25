@@ -213,8 +213,54 @@ class AnnexProject():
 		if not tr(new_task['dir']):
 			return False
 
-		new_task['dir'] = os.path.join(new_task['root'], new_task['dir'].capitalize())
+		new_task['dir'] = new_task['dir'].capitalize()
+		
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'rb') as M:
+			annex_vars = json.loads(M.read())
+
+		print "Apply mime-type to this task?"
+		if prompt("Y|n: ") not in ["n", "N"]:
+			for m in ["MIME_TYPES", "MIME_TYPE_MAP", "MIME_TYPE_TASKS"]:
+				if m not in annex_vars.keys():
+					annex_vars[m] = {}
+
+			if len(annex_vars['MIME_TYPES'].keys()) > 0:
+				print "Choose from one of these mime types"
+				print ", ".join(annex_vars['MIME_TYPES'].keys())
+				print "or create a new one here."
+			else:
+				print "No mime types yes! Create on here."
+
+			new_task['mime_type'] = prompt("Mime type: ")
+			if not tr(new_task['mime_type']):
+				return False
+
+			if new_task['mime_type'] not in annex_vars['MIME_TYPES'].keys():
+				m = { new_task['mime_type'] : prompt("Short code for new mime type %s (i.e. \"my_json\"): " \
+					% new_task['mime_type']) }
+
+				annex_vars['MIME_TYPES'].update(m)
+				annex_vars['MIME_TYPE_MAP'].update({
+					m[new_task['mime_type']] : new_task['mime_type']
+				})
+
+			if new_task['mime_type'] not in annex_vars['MIME_TYPE_TASKS'].keys():
+				annex_vars['MIME_TYPE_TASKS'][new_task['mime_type']] = []
+
+			annex_vars['MIME_TYPE_TASKS'][new_task['mime_type']].append("%(dir)s.%(name)s.%(name)s" % new_task)
+		else:
+			print "Run task at project start?"
+			if prompt("Y|n: ") not in ["n", "N"]:
+				if "INITIAL_TASKS" not in annex_vars.keys():
+					annex_vars['INITIAL_TASKS'] = []
+
+				annex_vars['INITIAL_TASKS'].append("%(dir)s.%(name)s.%(name)s" % new_task)		
+
+		new_task['dir'] = os.path.join(new_task['root'], new_task['dir'])
 		new_task['path'] = os.path.join(new_task['dir'], "%s.py" % new_task['name'])
+
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'wb+') as M:
+			M.write(json.dumps(annex_vars, indent=4))
 
 		routine = [
 			"mkdir -p %(dir)s" ,
