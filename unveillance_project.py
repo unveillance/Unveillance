@@ -166,7 +166,11 @@ class AnnexProject():
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
 
 	def remove(self):
+		with open(os.path.join(self.config['IMAGE_HOME'], "gui", "lib", "Frontend", "conf", "unveillance.secrets.json"), 'rb') as u:
+			frontend_config = json.loads(u.read())
+
 		routine = [
+			"rm %(ssh_key_priv)s %(ssh_key_priv)s.pub" % frontend_config,
 			"%(DOCKER_EXE)s stop %(PROJECT_NAME)s",
 			"%(DOCKER_EXE)s rm %(PROJECT_NAME)s",
 			"%(DOCKER_EXE)s rmi %(IMAGE_NAME)s:%(PROJECT_NAME)s",
@@ -175,6 +179,50 @@ class AnnexProject():
 		]
 
 		return build_routine([r % self.config for r in routine], dst=self.config['IMAGE_HOME'])
+
+	def task(self):
+		import re
+		from itertools import chain
+		from fabric.operations import prompt
+
+		def tr(s):
+			if re.match(r'^[a-zA-Z]\w*$', new_task['name']):
+				return True
+
+			print "bad regex."
+			return False
+
+		new_task = { "root" : os.path.join(self.config['IMAGE_HOME'], "annex", "Tasks") }
+
+		new_task['name'] = prompt("New task name: ")
+		if not tr(new_task['name']):
+			return False
+		
+		print "Which group should this task belong to? "
+		for _, d, _ in os.walk(new_task['root']):
+			if len(d) > 0:
+				print "Choose one from these groups:"
+				print ", ".join(d)
+				print "or create a new one here."
+			else:
+				print "No groups yet! Create one here."
+
+			break
+		
+		new_task['dir'] = prompt("Task group: ")
+		if not tr(new_task['dir']):
+			return False
+
+		new_task['dir'] = os.path.join(new_task['root'], new_task['dir'].capitalize())
+		new_task['path'] = os.path.join(new_task['dir'], "%s.py" % new_task['name'])
+
+		routine = [
+			"mkdir -p %(dir)s" ,
+			"if [ ! -f %(dir)s/__init__.py ]; then touch %(dir)s/__init__.py; fi",
+			"sed 's/NAME_OF_TASK/%(name)s/g' $UNVEILLANCE_BUILD_HOME/tmpl/annex.task.py > %(path)s"
+		]
+
+		return build_routine([r % new_task for r in routine], dst=self.config['IMAGE_HOME'])
 
 if __name__ == "__main__":
 	res = False
@@ -188,7 +236,8 @@ if __name__ == "__main__":
 		"start" : annex_project.start,
 		"stop" : annex_project.stop,
 		"attach" : annex_project.attach,
-		"remove" : annex_project.remove
+		"remove" : annex_project.remove,
+		"task" : annex_project.task
 	}
 
 	try:
