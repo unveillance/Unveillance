@@ -153,6 +153,17 @@ remove_annex_project(){
 	fi
 }
 
+add_annex_task(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py task $IMAGE_HOME "$@"
+
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
 run_docker_routine(){
 	cd $IMAGE_HOME
 	if [ -f .routine.sh ]; then
@@ -168,17 +179,6 @@ run_docker_routine(){
 		if [ -f Dockerfile ]; then
 			rm Dockerfile
 		fi
-	fi
-}
-
-add_annex_task(){
-	cd $UNVEILLANCE_BUILD_HOME
-	python unveillance_project.py task $IMAGE_HOME
-
-	if [ $? -eq 0 ]; then
-		run_docker_routine
-	else
-		do_exit 1
 	fi
 }
 
@@ -212,7 +212,10 @@ else
 	setup
 fi
 
-case "$1" in
+ACTION=$1
+shift
+
+case "$ACTION" in
 	init)
 		echo "Initing Unveillance..."
 		init_docker_image
@@ -249,7 +252,7 @@ case "$1" in
 		;;
 	task)
 		echo "Adding Task to Unveillance Project at $IMAGE_HOME..."
-		add_annex_task
+		add_annex_task "$@"
 		;;
 	*)
 		echo "Unveillance help"		
