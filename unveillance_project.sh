@@ -43,6 +43,7 @@ init_annex_project(){
 	mkdir -p $SRC_HOME
 	mkdir $SRC_HOME/Tasks
 	mkdir $SRC_HOME/Models
+	mkdir $SRC_HOME/Modules
 
 	cp $UNVEILLANCE_BUILD_HOME/tmpl/project.vars.json $SRC_HOME/vars.json
 	
@@ -156,6 +157,7 @@ run_docker_routine(){
 	cd $IMAGE_HOME
 	if [ -f .routine.sh ]; then
 		chmod +x .routine.sh
+		cat .routine.sh
 
 		./.routine.sh
 
@@ -169,8 +171,19 @@ run_docker_routine(){
 	fi
 }
 
+add_annex_task(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py task $IMAGE_HOME
+
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
 show_usage(){
-	echo "unveillance [init|new|update|start|stop|restart]"
+	echo "unveillance [init|new|update|start|stop|restart|task]"
 }
 
 do_exit(){
@@ -233,6 +246,10 @@ case "$1" in
 	remove)
 		echo "Removing Unveillance Project at $IMAGE_HOME..."
 		remove_annex_project
+		;;
+	task)
+		echo "Adding Task to Unveillance Project at $IMAGE_HOME..."
+		add_annex_task
 		;;
 	*)
 		echo "Unveillance help"		
