@@ -95,6 +95,13 @@ init_annex_project(){
 }
 
 update_annex_project(){
+	cd $UNVEILLANCE_BUILD_HOME
+
+	python unveillance_project.py validate $IMAGE_HOME
+	if ![ $? -eq 0 ]; then
+		do_exit 1
+	fi
+
 	cd $IMAGE_HOME/annex
 	git add .
 	git commit -m "annex updated"
@@ -156,6 +163,28 @@ remove_annex_project(){
 add_annex_task(){
 	cd $UNVEILLANCE_BUILD_HOME
 	python unveillance_project.py task $IMAGE_HOME "$@"
+
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+add_annex_asset(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py asset $IMAGE_HOME "$@"
+
+	if [ $? -eq 0 ]; then
+		run_docker_routine
+	else
+		do_exit 1
+	fi
+}
+
+add_annex_model(){
+	cd $UNVEILLANCE_BUILD_HOME
+	python unveillance_project.py model $IMAGE_HOME "$@"
 
 	if [ $? -eq 0 ]; then
 		run_docker_routine
@@ -253,6 +282,14 @@ case "$ACTION" in
 	task)
 		echo "Adding Task to Unveillance Project at $IMAGE_HOME..."
 		add_annex_task "$@"
+		;;
+	asset)
+		echo "Adding Asset to Unveillance Project at $IMAGE_HOME..."
+		add_annex_asset "$@"
+		;;
+	model)
+		echo "Adding Model to Unveillance Project at $IMAGE_HOME..."
+		add_annex_model "$@"
 		;;
 	*)
 		echo "Unveillance help"		

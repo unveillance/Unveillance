@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from __future__ import absolute_import
 
 from vars import CELERY_STUB as celery_app
