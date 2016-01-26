@@ -1,5 +1,10 @@
-import os, json
+#!/usr/bin/env python
+
+import os, json, re
 from sys import argv, exit
+from fabric.operations import prompt
+from fabric.api import settings, local
+from fabric.context_managers import hide
 
 from dutils.conf import BASE_DIR, DUtilsKeyDefaults, load_config, build_config, save_config, append_to_config
 from dutils.dutils import build_dockerfile, generate_init_routine, generate_build_routine, build_routine
@@ -180,37 +185,155 @@ class AnnexProject():
 
 		return build_routine([r % self.config for r in routine], dst=self.config['IMAGE_HOME'])
 
-	def task(self):
-		import re
-		from itertools import chain
-		from fabric.operations import prompt
+	def __parse_asset(self, args):
+		try:
+			return { a[0] : a[1] for a in [a.split("=") for a in args] }
+		except Exception as e:
+			print e, type(e)
 
-		def tr(s):
-			if re.match(r'^[a-zA-Z]\w*$', new_task['name']):
-				return True
+		return {}
 
-			print "bad regex."
+	def __tr(self, s):
+		if re.match(r'^[a-zA-Z]\w*$', s):
+			return True
+
+		print "bad regex."
+		return False
+
+	def validate(self, *args):
+		print args
+
+		def is_applicable(filename):
+			if filename == "__init__.py":
+				return False
+
+			if re.match(r'.*pyc$', filename):
+				return False
+
+			with settings(hide('everything'), warn_only=True):
+				if re.match(re.compile("%s:.*[pP]ython\sscript.*" % filename), local("file %s" % filename, capture=True)):
+					return True
+
 			return False
 
-		new_task = { "root" : os.path.join(self.config['IMAGE_HOME'], "annex", "Tasks") }
+		# go through models, modules, tasks
+		# pick out asset tags: make sure they exist in vars
 
-		new_task['name'] = prompt("New task name: ")
-		if not tr(new_task['name']):
+		user_files = []
+
+		for d in ["Models", "Modules", "Tasks"]:
+			for root, _, files in os.walk(os.path.join(self.config['IMAGE_HOME'], "annex", d)):
+				user_files += [os.path.join(root, f) for f in files if is_applicable(os.path.join(root, f))]
+
+		if len(user_files) == 0:
+			return True
+
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'rb') as M:
+			annex_vars = json.loads(M.read())
+
+		if "ASSET_TAGS" not in annex_vars.keys():
+			annex_vars['ASSET_TAGS'] = {}
+
+		for f in user_files:			
+			with open(f, 'rb') as F:
+				for line in F.readlines():
+					for short_code in re.findall(".*ASSET_TAGS\[[\'\"](.*)[\'\"]\].*", line):
+						if not self.__tr(short_code):
+							continue
+
+						if short_code not in annex_vars['ASSET_TAGS'].keys():
+							asset_tag = None
+
+							try:
+								if args[0][0] == "add_short_code":
+									asset_tag = short_code
+							except Exception as e:
+								pass
+
+							if asset_tag is None:
+								asset_tag = prompt("Descriptive string for \"%s\" asset? (i.e. \"json_from_my_annex\")" % short_code)
+
+							if not self.__tr(asset_tag):
+								continue
+
+							annex_vars['ASSET_TAGS'][short_code] = asset_tag
+		
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'wb+') as M:
+			M.write(json.dumps(annex_vars, indent=4))
+		
+		return True
+
+	def model(self, *args):
+		new_model = self.__parse_asset(args[0])
+		new_model['root'] = os.path.join(self.config['IMAGE_HOME'], "annex", "Models")
+
+		if "name" not in new_model.keys():
+			new_model['name'] = prompt("New model name: ")
+
+		if not self.__tr(new_model['name']):
+			return False
+
+		new_model['path'] = os.path.join(new_model['root'], "%s.py" % new_model['name'])
+
+		routine = [
+			"sed 's/NAME_OF_MODEL/%(name)s/g' $UNVEILLANCE_BUILD_HOME/tmpl/annex.model.py > %(path)s"
+		]
+
+		return build_routine([r % new_model for r in routine], dst=self.config['IMAGE_HOME'])
+
+	def asset(self, *args):
+		new_asset = self.__parse_asset(args[0])
+
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'rb') as M:
+			annex_vars = json.loads(M.read())
+
+		if "ASSET_TAGS" not in annex_vars.keys():
+			annex_vars['ASSET_TAGS'] = {}
+
+		if "name" not in new_asset.keys():
+			new_asset['name'] = prompt("New asset name: ")
+
+		if not self.__tr(new_asset['name']):
+			return False
+
+		if "short_code" not in new_asset.keys():
+			new_asset['short_code'] = prompt("Short code for new mime type %s (i.e. \"my_json\"): " \
+				% new_asset['name'])
+
+		if not self.__tr(new_asset['short_code']):
+			return False
+
+		annex_vars['ASSET_TAGS'].update({ new_asset['short_code'] : new_asset['name'] })
+		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'wb+') as M:
+			M.write(json.dumps(annex_vars, indent=4))
+
+		return True
+
+	def task(self, *args):
+		new_task = self.__parse_asset(args[0])			
+		new_task['root'] = os.path.join(self.config['IMAGE_HOME'], "annex", "Tasks")
+
+		if "name" not in new_task.keys():
+			new_task['name'] = prompt("New task name: ")
+		
+		if not self.__tr(new_task['name']):
 			return False
 		
-		print "Which group should this task belong to? "
-		for _, d, _ in os.walk(new_task['root']):
-			if len(d) > 0:
-				print "Choose one from these groups:"
-				print ", ".join(d)
-				print "or create a new one here."
-			else:
-				print "No groups yet! Create one here."
+		if "dir" not in new_task.keys():
+			print "Which group should this task belong to? "
+			for _, d, _ in os.walk(new_task['root']):
+				if len(d) > 0:
+					print "Choose one from these groups:"
+					print ", ".join(d)
+					print "or create a new one here."
+				else:
+					print "No groups yet! Create one here."
 
-			break
-		
-		new_task['dir'] = prompt("Task group: ")
-		if not tr(new_task['dir']):
+				break
+			
+			new_task['dir'] = prompt("Task group: ")
+
+		if not self.__tr(new_task['dir']):
 			return False
 
 		new_task['dir'] = new_task['dir'].capitalize()
@@ -218,39 +341,52 @@ class AnnexProject():
 		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'rb') as M:
 			annex_vars = json.loads(M.read())
 
-		print "Apply mime-type to this task?"
-		if prompt("Y|n: ") not in ["n", "N"]:
+		if "apply" not in new_task.keys():
+			new_task['apply'] = False
+
+			print "Apply mime-type to this task?"
+			if prompt("Y|n: ") not in ["n", "N"]:
+				new_task['apply'] = "mime_type"
+			else:
+				print "Run task at project start?"
+				if prompt("Y|n: ") not in ["n", "N"]:
+					new_task['apply'] = "init"
+
+		if new_task['apply'] == "mime_type":
 			for m in ["MIME_TYPES", "MIME_TYPE_MAP", "MIME_TYPE_TASKS"]:
 				if m not in annex_vars.keys():
 					annex_vars[m] = {}
 
-			if len(annex_vars['MIME_TYPES'].keys()) > 0:
-				print "Choose from one of these mime types"
-				print ", ".join(annex_vars['MIME_TYPES'].keys())
-				print "or create a new one here."
-			else:
-				print "No mime types yes! Create on here."
+			if "mime_type" not in new_task.keys():
+				if len(annex_vars['MIME_TYPES'].keys()) > 0:
+					print "Choose from one of these mime types"
+					print ", ".join(annex_vars['MIME_TYPES'].keys())
+					print "or create a new one here."
+				else:
+					print "No mime types yes! Create on here."
 
-			new_task['mime_type'] = prompt("Mime type: ")
-			if not tr(new_task['mime_type']):
+				new_task['mime_type'] = prompt("Mime type: ")
+			
+			if not self.__tr(new_task['mime_type']):
 				return False
 
 			if new_task['mime_type'] not in annex_vars['MIME_TYPES'].keys():
-				m = { new_task['mime_type'] : prompt("Short code for new mime type %s (i.e. \"my_json\"): " \
-					% new_task['mime_type']) }
+				if new_task['short_code'] not in new_task.keys():
+					new_task['short_code'] = prompt("Short code for new mime type %s (i.e. \"my_json\"): " \
+						% new_task['mime_type'])
 
-				annex_vars['MIME_TYPES'].update(m)
-				annex_vars['MIME_TYPE_MAP'].update({
-					m[new_task['mime_type']] : new_task['mime_type']
-				})
+				if not self.__tr(new_task['short_code']):
+					return False
+
+				annex_vars['MIME_TYPES'].update({ new_task['mime_type'] : new_task['short_code'] })
+				annex_vars['MIME_TYPE_MAP'].update({ new_task['short_code'] : new_task['mime_type'] })
 
 			if new_task['mime_type'] not in annex_vars['MIME_TYPE_TASKS'].keys():
 				annex_vars['MIME_TYPE_TASKS'][new_task['mime_type']] = []
 
 			annex_vars['MIME_TYPE_TASKS'][new_task['mime_type']].append("%(dir)s.%(name)s.%(name)s" % new_task)
-		else:
-			print "Run task at project start?"
-			if prompt("Y|n: ") not in ["n", "N"]:
+
+		elif new_task['apply'] == "init":
 				if "INITIAL_TASKS" not in annex_vars.keys():
 					annex_vars['INITIAL_TASKS'] = []
 
@@ -283,11 +419,13 @@ if __name__ == "__main__":
 		"stop" : annex_project.stop,
 		"attach" : annex_project.attach,
 		"remove" : annex_project.remove,
-		"task" : annex_project.task
+		"task" : annex_project.task,
+		"asset" : annex_project.asset,
+		"validate" : annex_project.validate
 	}
 
 	try:
-		res = options[argv[1]]()
+		res = options[argv[1]](argv[3:])
 	except Exception as e:
 		print e, type(e)
 
