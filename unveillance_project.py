@@ -121,7 +121,7 @@ class AnnexProject():
 			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'echo \"\"'" % frontend_config,
 			"cd %(IMAGE_HOME)s/annex" % self.config,
 			"git config alias.unveillance \\!\"%(IMAGE_HOME)s/.git_as.sh\"" % self.config,
-			"git remote add origin ssh://%(server_user)s@localhost:%(annex_remote_port)d/~/unveillance" % frontend_config
+			"git remote add origin ssh://%(server_user)s@%(server_host)s:%(annex_remote_port)d/~/unveillance" % frontend_config
 		]
 
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -131,7 +131,7 @@ class AnnexProject():
 			frontend_config = json.loads(u.read())
 
 		routine = [
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'cd ~/unveillance && git reset --hard HEAD && cd lib/Annex && ./update.sh all'" % frontend_config
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance && git reset --hard HEAD && ./unveillance.sh update'" % frontend_config
 		]
 
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -153,7 +153,7 @@ class AnnexProject():
 		routine = [
 			"%(DOCKER_EXE)s start %(PROJECT_NAME)s" % self.config,
 			"sleep 3",
-			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance/lib/Annex && ./startup.sh'&" % frontend_config
+			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'source ~/.bash_profile && cd ~/unveillance && ./unveillance.sh start'" % frontend_config
 		]
 		
 		return build_routine(routine, dst=self.config['IMAGE_HOME'])
@@ -238,25 +238,27 @@ class AnnexProject():
 			with open(f, 'rb') as F:
 				for line in F.readlines():
 					for short_code in re.findall(".*ASSET_TAGS\[[\'\"](.*)[\'\"]\].*", line):
+						if short_code in annex_vars['ASSET_TAGS'].keys():
+							continue
+
 						if not self.__tr(short_code):
 							continue
 
-						if short_code not in annex_vars['ASSET_TAGS'].keys():
-							asset_tag = None
+						asset_tag = None
 
-							try:
-								if args[0][0] == "add_short_code":
-									asset_tag = short_code
-							except Exception as e:
-								pass
+						try:
+							if args[0][0] == "add_short_code":
+								asset_tag = short_code
+						except Exception as e:
+							pass
 
-							if asset_tag is None:
-								asset_tag = prompt("Descriptive string for \"%s\" asset? (i.e. \"json_from_my_annex\")" % short_code)
+						if asset_tag is None:
+							asset_tag = prompt("Descriptive string for \"%s\" asset? (i.e. \"json_from_my_annex\")" % short_code)
 
-							if not self.__tr(asset_tag):
-								continue
+						if not self.__tr(asset_tag):
+							continue
 
-							annex_vars['ASSET_TAGS'][short_code] = asset_tag
+						annex_vars['ASSET_TAGS'][short_code] = asset_tag
 		
 		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'wb+') as M:
 			M.write(json.dumps(annex_vars, indent=4))
