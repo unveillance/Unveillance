@@ -194,7 +194,7 @@ class AnnexProject():
 		return {}
 
 	def __tr(self, s):
-		if re.match(r'^[a-zA-Z]\w*$', s):
+		if re.match(r'^[a-zA-Z][\w\.\-_/]*$', s):
 			return True
 
 		print "bad regex."
@@ -346,12 +346,10 @@ class AnnexProject():
 		if "apply" not in new_task.keys():
 			new_task['apply'] = False
 
-			print "Apply mime-type to this task?"
-			if prompt("Y|n: ") not in ["n", "N"]:
+			if prompt("Apply mime-type to this task? Y|n: ") not in ["n", "N"]:
 				new_task['apply'] = "mime_type"
 			else:
-				print "Run task at project start?"
-				if prompt("Y|n: ") not in ["n", "N"]:
+				if prompt("Run task at project start? Y|n: ") not in ["n", "N"]:
 					new_task['apply'] = "init"
 
 		if new_task['apply'] == "mime_type":
@@ -373,7 +371,7 @@ class AnnexProject():
 				return False
 
 			if new_task['mime_type'] not in annex_vars['MIME_TYPES'].keys():
-				if new_task['short_code'] not in new_task.keys():
+				if "short_code" not in new_task.keys():
 					new_task['short_code'] = prompt("Short code for new mime type %s (i.e. \"my_json\"): " \
 						% new_task['mime_type'])
 
@@ -422,12 +420,16 @@ if __name__ == "__main__":
 		"attach" : annex_project.attach,
 		"remove" : annex_project.remove,
 		"task" : annex_project.task,
+		"model" : annex_project.model,
 		"asset" : annex_project.asset,
 		"validate" : annex_project.validate
 	}
 
 	try:
-		res = options[argv[1]](argv[3:])
+		if len(argv) >= 4:
+			res = options[argv[1]](argv[3:])
+		else:
+			res = options[argv[1]]()
 	except Exception as e:
 		print e, type(e)
 

@@ -131,8 +131,7 @@ start_annex_project(){
 	python unveillance_project.py start $IMAGE_HOME
 	if [ $? -eq 0 ]; then
 		run_docker_routine
-		cd $IMAGE_HOME/gui/lib/Frontend
-		./startup.sh $IMAGE_HOME/gui/controller_frontend.py
+		start_frontend
 	else
 		do_exit 1
 	fi
@@ -148,6 +147,12 @@ stop_annex_project(){
 	else
 		do_exit 1
 	fi
+}
+
+start_frontend(){
+	cd $IMAGE_HOME/gui/lib/Frontend
+	./shutdown.sh $IMAGE_HOME/gui/controller_frontend.py
+	./startup.sh $IMAGE_HOME/gui/controller_frontend.py
 }
 
 remove_annex_project(){
@@ -197,7 +202,7 @@ run_docker_routine(){
 	cd $IMAGE_HOME
 	if [ -f .routine.sh ]; then
 		chmod +x .routine.sh
-		cat .routine.sh
+		#cat .routine.sh
 
 		./.routine.sh
 
@@ -290,6 +295,10 @@ case "$ACTION" in
 	model)
 		echo "Adding Model to Unveillance Project at $IMAGE_HOME..."
 		add_annex_model "$@"
+		;;
+	gui)
+		echo "Starting up gui to Unveillance Project at $IMAGE_HOME..."
+		start_frontend
 		;;
 	*)
 		echo "Unveillance help"		
