@@ -79,6 +79,7 @@ init_annex_project(){
 	if [ $? -eq 0 ]; then
 		cd $FRONTEND_DIR/lib/Frontend
 		python setup.py $IMAGE_HOME/unveillance.secrets.json
+		ln -s $SRC_HOME/vars.json web/
 		run_docker_routine
 	else
 		do_exit 1

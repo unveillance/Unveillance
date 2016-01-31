@@ -44,6 +44,18 @@ class AnnexProject():
 			generate_init_routine(self.config, with_config=base_config)
 
 	def build(self):
+		def get_task_pool():
+			task_pool = []
+			task_omits = ["%s.py" % o for o in ["__init__", "evaluate_text", "evaluate_document", "evaluate_file", "pull_from_annex"]]
+			annex_tmpl = os.path.join(os.getenv('UNVEILLANCE_BUILD_HOME'), "src", "unveillance", "lib", \
+				"Annex", "lib", "Worker", "Tasks")
+
+			for root, _, files in os.walk(annex_tmpl):
+				task_pool += ["%(r)s.%(n)s.%(n)s" % { 'r' : root.split("/")[-1], 'n' : f.replace(".py", "") } for f in files if f not in task_omits]
+
+			return task_pool
+
+
 		config_path = os.path.join(self.config['IMAGE_HOME'], "docker.config.json")
 		base_config = load_config(with_config=os.path.join(BASE_DIR, "docker.config.json"))
 		
@@ -69,7 +81,8 @@ class AnnexProject():
 			'annex_remote_port' : last_allocation + 3,
 			'api.port': last_allocation + 4,	#whatever's available on host
 			'annex_local' : os.path.join(self.config['IMAGE_HOME'], "data"),
-			'ssh_root' : os.path.join(os.path.expanduser("~"), ".ssh")
+			'ssh_root' : os.path.join(os.path.expanduser("~"), ".ssh"),
+			'task_pool' : get_task_pool()
 		})
 
 		# establish PUBLISH_DIRECTIVES for server ports
@@ -83,7 +96,7 @@ class AnnexProject():
 
 		# persist everything
 		with open(os.path.join(self.config['IMAGE_HOME'], "unveillance.secrets.json"), 'wb+') as u:
-			u.write(json.dumps(frontend_config))
+			u.write(json.dumps(frontend_config, indent=4))
 
 		with open(allocations_manifest, 'ab') as u:
 			u.write("%s\n" % " ".join([str(frontend_config[c]) for c in \
@@ -118,6 +131,7 @@ class AnnexProject():
 		# git remote add docker image
 		routine = [
 			"chmod +x %(IMAGE_HOME)s/.git_as.sh %(IMAGE_HOME)s/.ssh_as.sh" % self.config,
+			"sleep 5",
 			"ssh -f -p %(annex_remote_port)d -o IdentitiesOnly=yes -o PubkeyAuthentication=yes -i %(ssh_key_priv)s %(server_user)s@%(server_host)s 'echo \"\"'" % frontend_config,
 			"cd %(IMAGE_HOME)s/annex" % self.config,
 			"git config alias.unveillance \\!\"%(IMAGE_HOME)s/.git_as.sh\"" % self.config,
@@ -266,7 +280,7 @@ class AnnexProject():
 		return True
 
 	def model(self, *args):
-		new_model = self.__parse_asset(args[0])
+		new_model = self.__parse_asset(args[0]) if type(args) is list else {}
 		new_model['root'] = os.path.join(self.config['IMAGE_HOME'], "annex", "Models")
 
 		if "name" not in new_model.keys():
@@ -284,7 +298,7 @@ class AnnexProject():
 		return build_routine([r % new_model for r in routine], dst=self.config['IMAGE_HOME'])
 
 	def asset(self, *args):
-		new_asset = self.__parse_asset(args[0])
+		new_asset = self.__parse_asset(args[0]) if type(args) is list else {}
 
 		with open(os.path.join(self.config['IMAGE_HOME'], "annex", "vars.json"), 'rb') as M:
 			annex_vars = json.loads(M.read())
@@ -312,7 +326,7 @@ class AnnexProject():
 		return True
 
 	def task(self, *args):
-		new_task = self.__parse_asset(args[0])			
+		new_task = self.__parse_asset(args[0]) if type(args) is list else {}
 		new_task['root'] = os.path.join(self.config['IMAGE_HOME'], "annex", "Tasks")
 
 		if "name" not in new_task.keys():
@@ -391,6 +405,11 @@ class AnnexProject():
 					annex_vars['INITIAL_TASKS'] = []
 
 				annex_vars['INITIAL_TASKS'].append("%(dir)s.%(name)s.%(name)s" % new_task)		
+
+		if "TASK_POOL" not in annex_vars.keys():
+			annex_vars['TASK_POOL'] = []
+
+		annex_vars['TASK_POOL'].append("%(dir)s.%(name)s.%(name)s" % new_task)
 
 		new_task['dir'] = os.path.join(new_task['root'], new_task['dir'])
 		new_task['path'] = os.path.join(new_task['dir'], "%s.py" % new_task['name'])

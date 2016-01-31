@@ -1,4 +1,4 @@
 *.pyc
 *.sh
-lib/
+lib/Annex
 .gitignore
